@@ -773,14 +773,20 @@ window._statsGoPage = function() {
 };
 
 // --- Page: Events ---
-let eventsTab = 'live';
+let eventsTab = 'live', _eventsFilterRegion = '';
 async function renderEvents(app) {
+  _eventsFilterRegion = '';
   app.innerHTML = `
     <h1 class="page-title">Events</h1>
     <div class="tabs">
       <button class="tab ${eventsTab==='live'?'active':''}" onclick="switchEventsTab('live')">Ongoing</button>
       <button class="tab ${eventsTab==='upcoming'?'active':''}" onclick="switchEventsTab('upcoming')">Upcoming</button>
       <button class="tab ${eventsTab==='completed'?'active':''}" onclick="switchEventsTab('completed')">Completed</button>
+    </div>
+    <div class="filters">
+      <select class="filter-select" id="eventsFilterRegion" onchange="_eventsFilterRegion=this.value;loadEvents()">
+        <option value="">All Regions</option>
+      </select>
     </div>
     <div id="eventsContent"><div class="loading">Loading</div></div>
   `;
@@ -834,7 +840,12 @@ async function loadEvents() {
   if (!el) return;
   setLoading(el);
   try {
-    const items = await getCombinedEvents(eventsTab);
+    const allItems = await getCombinedEvents(eventsTab);
+    // Populate region filter
+    const regions = [...new Set(allItems.map(ev => ev.region).filter(Boolean))].sort();
+    const regionSel = document.getElementById('eventsFilterRegion');
+    if (regionSel) regionSel.innerHTML = '<option value="">All Regions</option>' + regions.map(r => `<option value="${r}" ${r===_eventsFilterRegion?'selected':''}>${flagToEmoji(r)} ${esc(r)}</option>`).join('');
+    const items = _eventsFilterRegion ? allItems.filter(ev => ev.region === _eventsFilterRegion) : allItems;
     if (!items.length) return setEmpty(el, 'No events found');
     el.innerHTML = '<div class="cards">' + items.map(ev => `
       <div class="card event-card" onclick="navigate('/event/${ev.id}')">
