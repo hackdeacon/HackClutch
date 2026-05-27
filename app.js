@@ -568,32 +568,30 @@ function _parseStatNum(v) { return Number(String(v || '').replace(/[^0-9.\-]/g, 
 window._statsSortBy = function(key) {
   const existing = _statsSort.findIndex(s => s.key === key);
   if (existing >= 0) {
-    if (_statsSort[existing].dir === 'desc') {
-      _statsSort[existing].dir = 'asc';
-    } else {
-      _statsSort.splice(existing, 1);
-    }
+    if (_statsSort[existing].dir === 'desc') _statsSort[existing].dir = 'asc';
+    else _statsSort.splice(existing, 1);
   } else {
     _statsSort.push({ key, dir: 'desc' });
   }
   statsPage = 1;
-  _renderStatsPage($('#statsContent'));
-  _renderSortChips();
+  _refreshStats();
 };
 window._statsClearSort = function() {
   _statsSort = [];
   statsPage = 1;
-  _renderStatsPage($('#statsContent'));
-  _renderSortChips();
+  _refreshStats();
 };
-function _renderSortChips() {
-  const el = document.getElementById('sortChips');
-  if (!el) return;
-  if (!_statsSort.length) { el.innerHTML = ''; return; }
-  el.innerHTML = _statsSort.map((s, i) => {
+function _refreshStats() {
+  _renderStatsPage($('#statsContent'));
+  const chipsEl = document.getElementById('statsSortChips');
+  if (!chipsEl) return;
+  if (!_statsSort.length) { chipsEl.innerHTML = ''; return; }
+  chipsEl.innerHTML = _statsSort.map((s, i) => {
     const col = _statsSortCols.find(c => c.key === s.key);
-    return `<span class="sort-chip sort-active" onclick="_statsSortBy('${s.key}')">${col.label} ${s.dir === 'desc' ? '↓' : '↑'}${_statsSort.length > 1 ? ' <span class="sort-badge">' + (i + 1) + '</span>' : ''}</span>`;
-  }).join('') + '<span class="sort-chip sort-clear" onclick="_statsClearSort()">✕ Clear</span>';
+    const arrow = s.dir === 'desc' ? '↓' : '↑';
+    const num = _statsSort.length > 1 ? (i + 1) : '';
+    return `<span class="sort-chip sort-active" onclick="_statsSortBy('${s.key}')">${col.label} ${arrow}${num ? ' <span class="sort-badge">' + num + '</span>' : ''}</span>`;
+  }).join('') + '<span class="sort-chip sort-clear" onclick="_statsClearSort()">✕</span>';
 }
 function _sortStatsData(data) {
   if (!_statsSort.length) return data;
@@ -631,8 +629,8 @@ async function renderStats(app) {
       <select class="filter-select" id="statsFilterAgent" onchange="_statsFilterAgent=this.value;statsPage=1;_renderStatsPage($('#statsContent'))">
         <option value="">All Agents</option>
       </select>
+      <span id="statsSortChips" class="sort-chips"></span>
     </div>
-    <div id="sortChips" class="sort-chips"></div>
     <div id="statsContent"><div class="loading">Loading</div></div>
   `;
   loadStats();
