@@ -26,6 +26,7 @@
 }
 html{scroll-behavior:smooth}
 body{font-family:var(--font);background:var(--canvas);color:var(--ink);line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased}
+input,button,select,textarea{font-family:inherit}
 a{color:var(--ink);text-decoration:none}
 a:hover{text-decoration:underline}
 
@@ -67,7 +68,7 @@ a:hover{text-decoration:underline}
 
 /* ========= Filters ========= */
 .filters{display:flex;gap:var(--s-md);margin-bottom:var(--s-lg);flex-wrap:wrap;align-items:center}
-.filter-select{padding:10px 14px;border:1px solid var(--hairline);border-radius:var(--r-sm);font-size:14px;font-weight:400;background:var(--canvas);outline:none;cursor:pointer;color:var(--ink);font-family:var(--font);appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23222'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.filter-select{padding:10px 14px;border:1px solid var(--hairline);border-radius:var(--r-sm);font-size:14px;font-weight:400;background:var(--canvas);outline:none;cursor:pointer;color:var(--ink);appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23222'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
 .filter-select:focus{border-color:var(--ink);border-width:2px;padding:9px 13px;padding-right:31px}
 
 /* ========= Cards Grid ========= */
@@ -187,7 +188,7 @@ tr:hover td{background:var(--surface-soft)}
 .empty{text-align:center;padding:var(--s-section) var(--s-lg);color:var(--muted)}
 .empty svg{margin-bottom:var(--s-md);opacity:.3}
 .error-msg{text-align:center;padding:var(--s-xl);color:var(--loss)}
-.error-msg button{margin-top:var(--s-md);padding:12px 24px;border:1px solid var(--primary);background:none;color:var(--primary);border-radius:var(--r-sm);cursor:pointer;font-size:14px;font-weight:500;font-family:var(--font);transition:all .15s}
+.error-msg button{margin-top:var(--s-md);padding:12px 24px;border:1px solid var(--primary);background:none;color:var(--primary);border-radius:var(--r-sm);cursor:pointer;font-size:14px;font-weight:500;transition:all .15s}
 .error-msg button:hover{background:var(--primary);color:var(--on-primary)}
 
 /* ========= Agent Badges ========= */
@@ -243,7 +244,7 @@ tr:hover td{background:var(--surface-soft)}
 
 /* ========= Pagination ========= */
 .pagination{display:flex;align-items:center;justify-content:center;gap:var(--s-sm);margin-top:var(--s-lg)}
-.page-btn{padding:8px 16px;border:1px solid var(--hairline);background:var(--canvas);border-radius:var(--r-sm);font-size:14px;font-weight:500;cursor:pointer;color:var(--ink);font-family:var(--font);transition:all .15s}
+.page-btn{padding:8px 16px;border:1px solid var(--hairline);background:var(--canvas);border-radius:var(--r-sm);font-size:14px;font-weight:500;cursor:pointer;color:var(--ink);transition:all .15s}
 .page-btn:hover{border-color:var(--ink)}
 .page-btn.active{background:var(--ink);color:var(--on-dark);border-color:var(--ink)}
 .page-btn:disabled{opacity:.4;cursor:not-allowed}
