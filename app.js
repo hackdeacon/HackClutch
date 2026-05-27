@@ -773,8 +773,32 @@ window._statsGoPage = function() {
 };
 
 // --- Page: Events ---
-let eventsTab = 'live', _eventsFilterRegion = '';
+let eventsTab = 'live', _eventsFilterSeries = '', _eventsFilterRegion = '';
+function _extractEventSeries(title) {
+  if (!title) return '';
+  const t = title.trim();
+  if (/^VCT\s+LOCK\s*IN/i.test(t)) return 'VCT LOCK//IN';
+  if (/^VCT\b/i.test(t)) return 'VCT';
+  if (/^Challengers\b/i.test(t)) return 'Challengers';
+  if (/^Game Changers\b/i.test(t)) return 'Game Changers';
+  if (/^Esports World Cup\b/i.test(t)) return 'Esports World Cup';
+  if (/^Masters\b/i.test(t)) return 'Masters';
+  if (/^Champions\b/i.test(t)) return 'Champions';
+  const colon = t.indexOf(':');
+  const raw = colon > 0 ? t.substring(0, colon).trim() : t;
+  return raw.replace(/\s*\d{4}\s*$/, '').trim() || raw;
+}
+function _countryToRegion(code) {
+  if (!code) return '';
+  const c = code.toLowerCase();
+  if (c === 'cn') return 'CN';
+  if (['eu','de','fr','es','it','lt','tr','sa','pt'].includes(c)) return 'EMEA';
+  if (['us','ca','br','ar','mx','cl','co','pe'].includes(c)) return 'Americas';
+  if (['kr','jp','vn','id','ph','th','au','nz','sg','my','in','tw'].includes(c)) return 'APAC';
+  return c.toUpperCase();
+}
 async function renderEvents(app) {
+  _eventsFilterSeries = '';
   _eventsFilterRegion = '';
   app.innerHTML = `
     <h1 class="page-title">Events</h1>
@@ -784,6 +808,9 @@ async function renderEvents(app) {
       <button class="tab ${eventsTab==='completed'?'active':''}" onclick="switchEventsTab('completed')">Completed</button>
     </div>
     <div class="filters">
+      <select class="filter-select" id="eventsFilterSeries" onchange="_eventsFilterSeries=this.value;loadEvents()">
+        <option value="">All Series</option>
+      </select>
       <select class="filter-select" id="eventsFilterRegion" onchange="_eventsFilterRegion=this.value;loadEvents()">
         <option value="">All Regions</option>
       </select>
@@ -840,12 +867,19 @@ async function loadEvents() {
   if (!el) return;
   setLoading(el);
   try {
-    const allItems = await getCombinedEvents(eventsTab);
+    const rawItems = await getCombinedEvents(eventsTab);
+    const allItems = rawItems.map(ev => ({ ...ev, series: _extractEventSeries(ev.title), zone: _countryToRegion(ev.region) }));
+    // Populate series filter
+    const series = [...new Set(allItems.map(ev => ev.series).filter(Boolean))].sort();
+    const seriesSel = document.getElementById('eventsFilterSeries');
+    if (seriesSel) seriesSel.innerHTML = '<option value="">All Series</option>' + series.map(s => `<option value="${esc(s)}" ${s===_eventsFilterSeries?'selected':''}>${esc(s)}</option>`).join('');
     // Populate region filter
-    const regions = [...new Set(allItems.map(ev => ev.region).filter(Boolean))].sort();
+    const zones = [...new Set(allItems.map(ev => ev.zone).filter(Boolean))].sort();
     const regionSel = document.getElementById('eventsFilterRegion');
-    if (regionSel) regionSel.innerHTML = '<option value="">All Regions</option>' + regions.map(r => `<option value="${r}" ${r===_eventsFilterRegion?'selected':''}>${flagToEmoji(r)} ${esc(r)}</option>`).join('');
-    const items = _eventsFilterRegion ? allItems.filter(ev => ev.region === _eventsFilterRegion) : allItems;
+    if (regionSel) regionSel.innerHTML = '<option value="">All Regions</option>' + zones.map(r => `<option value="${esc(r)}" ${r===_eventsFilterRegion?'selected':''}>${esc(r)}</option>`).join('');
+    let items = allItems;
+    if (_eventsFilterSeries) items = items.filter(ev => ev.series === _eventsFilterSeries);
+    if (_eventsFilterRegion) items = items.filter(ev => ev.zone === _eventsFilterRegion);
     if (!items.length) return setEmpty(el, 'No events found');
     el.innerHTML = '<div class="cards">' + items.map(ev => `
       <div class="card event-card" onclick="navigate('/event/${ev.id}')">
