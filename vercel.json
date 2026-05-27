@@ -1,8 +1,7 @@
 {
-  "rewrites": [
-    { "source": "/v2/:match*", "destination": "https://v.kiringo.cn/v2/:match*" },
-    { "source": "/api/v1/:match*", "destination": "https://vlr.kiringo.cn/api/v1/:match*" },
-    { "source": "/assets/:match*", "destination": "/assets/:match*" },
-    { "source": "/:path*", "destination": "/index.html" }
+  "routes": [
+    { "src": "^/v2(/.*)?$", "dest": "https://v.kiringo.cn/v2$1", "continue": true },
+    { "src": "^/api/v1(/.*)?$", "dest": "https://vlr.kiringo.cn/api/v1$1", "continue": true },
+    { "src": "^/((?!assets|favicon\\.ico).*)$", "dest": "/index.html" }
   ]
 }
