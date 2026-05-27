@@ -527,7 +527,7 @@ window.loadRankings = async function() {
 };
 
 // --- Page: Stats ---
-let statsRegion = 'cn', statsTimespan = '30';
+let statsRegion = 'cn', statsTimespan = '30', _statsLoading = false;
 async function renderStats(app) {
   app.innerHTML = `
     <h1 class="page-title">Player Stats</h1>
@@ -569,8 +569,10 @@ function _runLimited(tasks, limit) {
 }
 
 window.loadStats = async function() {
+  if (_statsLoading) return;
+  _statsLoading = true;
   const el = $('#statsContent');
-  if (!el) return;
+  if (!el) { _statsLoading = false; return; }
   setLoading(el);
   try {
     const data = await apiFetch('/stats?region=' + statsRegion + '&timespan=' + statsTimespan);
@@ -614,6 +616,7 @@ window.loadStats = async function() {
   } catch (e) {
     setError(el, 'Failed to load stats', loadStats);
   }
+  _statsLoading = false;
 };
 
 // --- Page: Events ---
