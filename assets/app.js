@@ -599,17 +599,24 @@ function _renderRankTable() {
     items = [..._rankData].sort((a, b) => _parseEarnings(b.earnings) - _parseEarnings(a.earnings));
   }
   el.innerHTML = `<div class="table-wrap"><table>
-    <thead><tr><th>#</th><th>Team</th><th>Country</th><th>Record</th><th>Earnings</th><th>Last Played</th></tr></thead>
-    <tbody>${items.map((r, i) => `
+    <thead><tr><th>#</th><th>Team</th><th>Country</th><th>Record</th><th>+/-</th><th>Earnings</th><th>Last Played</th></tr></thead>
+    <tbody>${items.map((r, i) => {
+      const rec = r.record || '';
+      const parts = rec.split(/[–-]/);
+      const diff = parts.length === 2 ? parseInt(parts[0]) - parseInt(parts[1]) : null;
+      const diffStr = diff !== null ? (diff > 0 ? `+${diff}` : `${diff}`) : '';
+      const diffColor = diff > 0 ? 'var(--win)' : diff < 0 ? 'var(--loss)' : 'var(--muted)';
+      return `
       <tr>
         <td class="rank-cell">${_rankSort === 'earnings' ? i + 1 : esc(r.rank)}</td>
         <td><div class="team-cell"><img src="${fixImg(r.logo)}" alt="" onerror="this.style.display='none'"><span style="font-weight:600">${esc(r.team)}</span></div></td>
         <td>${flagToEmoji(r.country)} ${esc(r.country || '')}</td>
         <td>${esc(r.record || '')}</td>
+        <td style="font-weight:600;color:${diffColor}">${diffStr}</td>
         <td title="${r.earnings ? '≈ ¥' + (Number(String(r.earnings).replace(/[^0-9.]/g,'')) * 6.8).toLocaleString('zh-CN',{maximumFractionDigits:0}) : ''}">${esc(r.earnings || '')}</td>
         <td style="font-size:13px;color:var(--muted)">${esc(r.last_played || '')} ${r.last_played_team ? `<span style="display:inline-flex;align-items:center;gap:4px">· ${esc(r.last_played_team)} ${r.last_played_team_logo ? `<img src="${fixImg(r.last_played_team_logo)}" alt="" style="width:16px;height:16px;border-radius:2px;object-fit:contain" onerror="this.style.display='none'">` : ''}</span>` : ''}</td>
       </tr>
-    `).join('')}</tbody>
+    `}).join('')}</tbody>
   </table></div>`;
 }
 
