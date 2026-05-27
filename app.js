@@ -360,14 +360,38 @@ async function renderNews(app) {
 }
 
 // --- Page: Matches ---
-let matchTab = 'live';
+let matchTab = 'live', _matchFilterSeries = '', _matchFilterRegion = '';
+function _extractMatchRegion(tournament) {
+  if (!tournament) return '';
+  const colon = tournament.indexOf(':');
+  if (colon >= 0) {
+    const after = tournament.substring(colon + 1).trim();
+    const regionMatch = after.match(/^([\w\s]+?)(?:\s+(?:Stage|Split|Qualifier|Act|Cup|Playoffs?|Finals?|Group|Week|Open|Main|Cash)\b)/i);
+    if (regionMatch) return regionMatch[1].trim();
+    const first2 = after.split(/\s+/).slice(0, 2).join(' ').trim();
+    if (first2 && !/^(Act|Stage|Split|Game)\b/i.test(first2)) return first2;
+  }
+  // Fallback: extract region from before year (e.g. "China Evolution Series 2026")
+  const yearMatch = tournament.match(/^([\w\s]+?)\s+\d{4}\b/);
+  return yearMatch ? yearMatch[1].replace(/\b(Evolution|Series|League|Cup|Open|Championship)\b/gi, '').trim() : '';
+}
 async function renderMatches(app) {
+  _matchFilterSeries = '';
+  _matchFilterRegion = '';
   app.innerHTML = `
     <h1 class="page-title">Matches</h1>
     <div class="tabs">
       <button class="tab ${matchTab==='live'?'active':''}" onclick="switchMatchTab('live')">Live</button>
       <button class="tab ${matchTab==='upcoming'?'active':''}" onclick="switchMatchTab('upcoming')">Upcoming</button>
       <button class="tab ${matchTab==='results'?'active':''}" onclick="switchMatchTab('results')">Results</button>
+    </div>
+    <div class="filters">
+      <select class="filter-select" id="matchFilterSeries" onchange="_matchFilterSeries=this.value;_applyMatchFilters()">
+        <option value="">All Series</option>
+      </select>
+      <select class="filter-select" id="matchFilterRegion" onchange="_matchFilterRegion=this.value;_applyMatchFilters()">
+        <option value="">All Regions</option>
+      </select>
     </div>
     <div id="matchContent"><div class="loading">Loading</div></div>
   `;
@@ -378,6 +402,24 @@ window.switchMatchTab = function(tab) {
   $$('.tab').forEach(t => t.classList.toggle('active', t.textContent.toLowerCase() === tab));
   loadMatches();
 };
+let _matchRawItems = [];
+window._applyMatchFilters = function() {
+  const el = $('#matchContent');
+  if (!el) return;
+  let items = _matchRawItems;
+  if (_matchFilterSeries) items = items.filter(m => _extractEventSeries(m.tournament_name || m.match_event) === _matchFilterSeries);
+  if (_matchFilterRegion) items = items.filter(m => _extractMatchRegion(m.tournament_name || m.match_event) === _matchFilterRegion);
+  if (!items.length) return setEmpty(el, 'No matches found');
+  el.innerHTML = '<div class="cards">' + items.map(m => matchCard(m, matchTab)).join('') + '</div>';
+};
+function _populateMatchFilters(items) {
+  const series = [...new Set(items.map(m => _extractEventSeries(m.tournament_name || m.match_event)).filter(Boolean))].sort();
+  const regions = [...new Set(items.map(m => _extractMatchRegion(m.tournament_name || m.match_event)).filter(Boolean))].sort();
+  const seriesSel = document.getElementById('matchFilterSeries');
+  const regionSel = document.getElementById('matchFilterRegion');
+  if (seriesSel) seriesSel.innerHTML = '<option value="">All Series</option>' + series.map(s => `<option value="${esc(s)}" ${s===_matchFilterSeries?'selected':''}>${esc(s)}</option>`).join('');
+  if (regionSel) regionSel.innerHTML = '<option value="">All Regions</option>' + regions.map(r => `<option value="${esc(r)}" ${r===_matchFilterRegion?'selected':''}>${esc(r)}</option>`).join('');
+}
 async function loadMatches() {
   const el = $('#matchContent');
   if (!el) return;
@@ -386,9 +428,10 @@ async function loadMatches() {
   try {
     const qMap = { live: 'live_score', upcoming: 'upcoming', results: 'results' };
     const data = await apiFetch('/match?q=' + qMap[matchTab]);
-    const items = data.segments || [];
-    if (!items.length) return setEmpty(el, matchTab === 'live' ? 'No live matches right now' : 'No matches found');
-    el.innerHTML = '<div class="cards">' + items.map(m => matchCard(m, matchTab)).join('') + '</div>';
+    _matchRawItems = data.segments || [];
+    _populateMatchFilters(_matchRawItems);
+    if (!_matchRawItems.length) return setEmpty(el, matchTab === 'live' ? 'No live matches right now' : 'No matches found');
+    _applyMatchFilters();
     if (matchTab === 'live') liveInterval = setInterval(loadMatches, 30000);
   } catch (e) {
     setError(el, 'Failed to load matches', loadMatches);
