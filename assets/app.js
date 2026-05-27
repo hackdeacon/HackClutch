@@ -521,14 +521,17 @@ window.showMatchDetail = async function(id) {
           if (!players.length) return;
           const teamName = seg.teams?.[ti]?.name || (ti === 0 ? 'Team 1' : 'Team 2');
           html += `<div style="font-size:12px;font-weight:600;color:var(--muted);margin:var(--s-sm) 0 var(--s-xs)">${esc(teamName)}</div>`;
-          html += '<div class="table-wrap" style="margin-bottom:var(--s-sm)"><table style="font-size:13px"><thead><tr><th>Player</th><th>Agent</th><th>Rating</th><th>ACS</th><th>K/D/A</th><th>ADR</th><th>HS%</th><th>KAST</th></tr></thead><tbody>';
+          html += '<div class="table-wrap" style="margin-bottom:var(--s-sm)"><table style="font-size:13px"><thead><tr><th>Player</th><th>Agent</th><th>Rating</th><th>ACS</th><th>K/D/A</th><th>+/-</th><th>ADR</th><th>HS%</th><th>KAST</th></tr></thead><tbody>';
           players.forEach(p => {
+            const kd = (parseInt(p.kills) || 0) - (parseInt(p.deaths) || 0);
+            const kdColor = kd > 0 ? 'var(--win)' : kd < 0 ? 'var(--loss)' : 'var(--muted)';
             html += `<tr>
               <td style="font-weight:600">${esc(p.name)}</td>
               <td>${agentBadge(p.agent)}</td>
               <td class="stat-highlight">${esc(p.rating)}</td>
               <td>${esc(p.acs)}</td>
               <td>${esc(p.kills)}/${esc(p.deaths)}/${esc(p.assists)}</td>
+              <td style="font-weight:600;color:${kdColor}">${kd > 0 ? '+' : ''}${kd}</td>
               <td>${esc(p.adr)}</td>
               <td>${esc(p.hs_pct)}</td>
               <td>${esc(p.kast)}</td>
