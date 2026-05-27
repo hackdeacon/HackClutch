@@ -725,11 +725,11 @@ async function loadEvents() {
     if (!items.length) return setEmpty(el, 'No events found');
     el.innerHTML = '<div class="cards">' + items.map(ev => `
       <div class="card event-card" onclick="navigate('/event/${ev.id}')">
-        <img class="event-thumb" src="${fixImg(ev.thumb)}" alt="" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22320%22 height=%22160%22><rect fill=%22%23f7f7f7%22 width=%22320%22 height=%22160%22/></svg>'">
+        <img class="event-icon" src="${fixImg(ev.thumb)}" alt="" onerror="this.style.display='none'">
         <div class="event-body">
-          <div class="event-status ${ev.status || eventsTab}">${esc(ev.status || eventsTab)}</div>
           <div class="event-title">${esc(ev.title)}</div>
           <div class="event-meta">
+            <span class="event-status ${ev.status || eventsTab}">${esc(ev.status || eventsTab)}</span>
             <span>${esc(ev.dates || '')}</span>
             <span>${esc(ev.prize || '')}</span>
             <span>${flagToEmoji(ev.region)} ${esc(ev.region || '')}</span>
