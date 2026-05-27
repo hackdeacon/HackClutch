@@ -527,7 +527,7 @@ window.loadRankings = async function() {
 };
 
 // --- Page: Stats ---
-let statsRegion = 'cn', statsTimespan = '30', _statsLoading = false;
+let statsRegion = 'cn', statsTimespan = '30';
 async function renderStats(app) {
   app.innerHTML = `
     <h1 class="page-title">Player Stats</h1>
@@ -558,65 +558,42 @@ async function _findPlayerId(name) {
     return match;
   } catch { return null; }
 }
-function _runLimited(tasks, limit) {
-  return new Promise(resolve => {
-    let i = 0, active = 0, done = 0;
-    function next() {
-      while (active < limit && i < tasks.length) { active++; tasks[i++]().finally(() => { active--; done++; if (done === tasks.length) resolve(); else next(); }); }
-    }
-    next();
-  });
-}
+
+window._goToPlayer = async function(name, el) {
+  if (el) { el.style.opacity = '.5'; el.style.pointerEvents = 'none'; }
+  const match = await _findPlayerId(name);
+  if (match) navigate('/player/' + match.id);
+  else { alert('Player not found'); if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; } }
+};
 
 window.loadStats = async function() {
-  if (_statsLoading) return;
-  _statsLoading = true;
   const el = $('#statsContent');
-  if (!el) { _statsLoading = false; return; }
+  if (!el) return;
   setLoading(el);
   try {
     const data = await apiFetch('/stats?region=' + statsRegion + '&timespan=' + statsTimespan);
     const items = data.segments || [];
     if (!items.length) return setEmpty(el, 'No stats available');
-    // Render cards immediately with placeholder avatars
-    el.innerHTML = '<div class="stats-cards">' + items.map((p, i) => `
-      <div class="stats-card" id="sc-${i}">
-        <div class="stats-card-head">
-          <div class="rank-badge">${i + 1}</div>
-          <div class="avatar-placeholder" id="sc-av-${i}">?</div>
-          <div class="card-player-info">
-            <div class="card-player-name">${esc(p.player)}</div>
-            <div class="card-player-org">${esc(p.org || 'Free Agent')}</div>
-          </div>
-          <div class="card-rating">${esc(p.rating)}</div>
-        </div>
-        <div class="stats-card-agents">${(p.agents||[]).map(a => agentBadge(a)).join('')}</div>
-        <div class="stats-card-stats">
-          <div><div class="sc-stat-val">${esc(p.average_combat_score)}</div><div class="sc-stat-label">ACS</div></div>
-          <div><div class="sc-stat-val">${esc(p.kill_deaths)}</div><div class="sc-stat-label">K/D</div></div>
-          <div><div class="sc-stat-val">${esc(p.average_damage_per_round)}</div><div class="sc-stat-label">ADR</div></div>
-          <div><div class="sc-stat-val">${esc(p.kills_per_round)}</div><div class="sc-stat-label">KPR</div></div>
-          <div><div class="sc-stat-val">${esc(p.headshot_percentage)}</div><div class="sc-stat-label">HS%</div></div>
-        </div>
-      </div>
-    `).join('') + '</div>';
-    // Fetch player data in batches and update cards
-    const tasks = items.map((p, i) => async () => {
-      const match = await _findPlayerId(p.player);
-      const card = document.getElementById('sc-' + i);
-      if (!card || !match) return;
-      const avEl = document.getElementById('sc-av-' + i);
-      if (avEl && match.img) {
-        avEl.outerHTML = '<img src="' + fixImg(match.img) + '" alt="" onerror="this.outerHTML=\'<div class=avatar-placeholder>?</div>\'">';
-      }
-      card.style.cursor = 'pointer';
-      card.onclick = () => navigate('/player/' + match.id);
-    });
-    await _runLimited(tasks, 5);
+    el.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>#</th><th>Player</th><th>Org</th><th>Agents</th><th>Rating</th><th>ACS</th><th>K/D</th><th>ADR</th><th>KPR</th><th>HS%</th></tr></thead>
+      <tbody>${items.map((p, i) => `
+        <tr>
+          <td class="rank-cell">${i + 1}</td>
+          <td><a class="player-link" onclick="_goToPlayer('${esc(p.player)}', this)" style="font-weight:600;cursor:pointer">${esc(p.player)}</a></td>
+          <td>${esc(p.org || 'N/A')}</td>
+          <td><div class="agents">${(p.agents||[]).map(a => agentBadge(a)).join('')}</div></td>
+          <td class="stat-highlight">${esc(p.rating)}</td>
+          <td>${esc(p.average_combat_score)}</td>
+          <td>${esc(p.kill_deaths)}</td>
+          <td>${esc(p.average_damage_per_round)}</td>
+          <td>${esc(p.kills_per_round)}</td>
+          <td>${esc(p.headshot_percentage)}</td>
+        </tr>
+      `).join('')}</tbody>
+    </table></div>`;
   } catch (e) {
     setError(el, 'Failed to load stats', loadStats);
   }
-  _statsLoading = false;
 };
 
 // --- Page: Events ---
