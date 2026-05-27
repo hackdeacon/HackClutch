@@ -259,7 +259,6 @@ const CacheManager = {
     '/team': 5 * 60 * 1000,           // 5 minutes
     '/player': 5 * 60 * 1000,         // 5 minutes
     '/search': 2 * 60 * 1000,         // 2 minutes
-    'player-search:': 24 * 60 * 60 * 1000, // 24 hours
     'vlr:/api/v1/events': 10 * 60 * 1000,
     'vlr:/api/v1/players': 5 * 60 * 1000,
     'vlr:/api/v1/teams': 5 * 60 * 1000,
@@ -527,7 +526,7 @@ window.loadRankings = async function() {
 };
 
 // --- Page: Stats ---
-let statsRegion = 'cn', statsTimespan = '30', statsPage = 1, _statsData = [];
+let statsRegion = 'cn', statsTimespan = '30', statsPage = 1, _statsData = [], _statsNameIdMap = {};
 async function renderStats(app) {
   app.innerHTML = `
     <h1 class="page-title">Player Stats</h1>
@@ -546,25 +545,6 @@ async function renderStats(app) {
   `;
   loadStats();
 }
-async function _findPlayerId(name) {
-  const cacheKey = 'player-search:' + name.toLowerCase();
-  const cached = CacheManager.get(cacheKey);
-  if (cached) return cached.data;
-  try {
-    const data = await apiFetch('/search?q=' + encodeURIComponent(name));
-    const players = data.segments?.results?.players || [];
-    const match = players.find(p => p.name.toLowerCase() === name.toLowerCase()) || players[0] || null;
-    CacheManager.set(cacheKey, match);
-    return match;
-  } catch { return null; }
-}
-
-window._goToPlayer = async function(name, el) {
-  if (el) { el.style.opacity = '.5'; el.style.pointerEvents = 'none'; }
-  const match = await _findPlayerId(name);
-  if (match) navigate('/player/' + match.id);
-  else { alert('Player not found'); if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; } }
-};
 
 const STATS_PER_PAGE = 50;
 window.loadStats = async function() {
@@ -572,7 +552,11 @@ window.loadStats = async function() {
   if (!el) return;
   setLoading(el);
   try {
-    const data = await apiFetch('/stats?region=' + statsRegion + '&timespan=' + statsTimespan);
+    const vlrRegion = statsRegion === 'gc' ? 'gc' : statsRegion;
+    const [data] = await Promise.all([
+      apiFetch('/stats?region=' + statsRegion + '&timespan=' + statsTimespan),
+      _loadStatsPlayerMap(vlrRegion)
+    ]);
     _statsData = data.segments || [];
     if (!_statsData.length) return setEmpty(el, 'No stats available');
     statsPage = 1;
@@ -581,6 +565,23 @@ window.loadStats = async function() {
     setError(el, 'Failed to load stats', loadStats);
   }
 };
+async function _loadStatsPlayerMap(region) {
+  const cacheKey = 'vlr-player-map:' + region;
+  const cached = CacheManager.get(cacheKey);
+  if (cached) { _statsNameIdMap = cached.data; return; }
+  _statsNameIdMap = {};
+  for (let page = 1; page <= 10; page++) {
+    try {
+      const res = await fetch(VLR_API + '/api/v1/players?page=' + page + '&limit=50&region=' + region);
+      const json = await res.json();
+      const items = json.data || [];
+      if (!items.length) break;
+      items.forEach(p => { _statsNameIdMap[p.name.toLowerCase()] = p.id; });
+      if (items.length < 50) break;
+    } catch { break; }
+  }
+  CacheManager.set(cacheKey, _statsNameIdMap);
+}
 function _renderStatsPage(el) {
   const totalPages = Math.ceil(_statsData.length / STATS_PER_PAGE);
   const start = (statsPage - 1) * STATS_PER_PAGE;
@@ -590,7 +591,7 @@ function _renderStatsPage(el) {
     <tbody>${items.map((p, i) => `
       <tr>
         <td class="rank-cell">${start + i + 1}</td>
-        <td><a class="player-link" onclick="_goToPlayer('${esc(p.player)}', this)" style="font-weight:600;cursor:pointer">${esc(p.player)}</a></td>
+        <td>${_statsNameIdMap[p.player.toLowerCase()] ? `<a href="#/player/${_statsNameIdMap[p.player.toLowerCase()]}" style="font-weight:600">${esc(p.player)}</a>` : `<span style="font-weight:600">${esc(p.player)}</span>`}</td>
         <td>${esc(p.org || 'N/A')}</td>
         <td><div class="agents">${(p.agents||[]).map(a => agentBadge(a)).join('')}</div></td>
         <td class="stat-highlight">${esc(p.rating)}</td>
