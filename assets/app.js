@@ -240,6 +240,25 @@ document.addEventListener('click', e => {
 });
 
 // --- Search ---
+let searchOpen = false;
+function toggleSearch() {
+  searchOpen = !searchOpen;
+  const bar = $('#searchBar');
+  const orb = $('#searchOrb');
+  if (searchOpen) {
+    bar.classList.add('open');
+    orb.style.display = 'none';
+    setTimeout(() => $('#searchInput').focus(), 100);
+  } else {
+    bar.classList.remove('open');
+    orb.style.display = '';
+    $('#searchInput').value = '';
+  }
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && searchOpen) toggleSearch(); });
+document.addEventListener('click', e => {
+  if (searchOpen && !$('#searchBox').contains(e.target)) toggleSearch();
+});
 let searchTimer = null;
 $('#searchInput').addEventListener('input', e => {
   clearTimeout(searchTimer);
