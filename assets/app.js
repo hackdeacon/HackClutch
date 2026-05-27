@@ -210,11 +210,12 @@ async function router() {
   const app = $('#app');
   $$('.nav a').forEach(a => {
     const r = a.dataset.route;
-    if (r === '/' && (route === '/' || route === '/news')) a.classList.add('active');
+    if (r === '/rankings' && (route === '/' || route === '/rankings')) a.classList.add('active');
     else if (route.startsWith(r) && r !== '/') a.classList.add('active');
     else a.classList.remove('active');
   });
-  if (route === '/' || route === '/news') return renderNews(app);
+  if (route === '/' || route === '/rankings') return renderRankings(app);
+  if (route === '/news') return renderNews(app);
   if (route === '/matches') return renderMatches(app);
   if (route === '/rankings') return renderRankings(app);
   if (route === '/stats') return renderStats(app);
