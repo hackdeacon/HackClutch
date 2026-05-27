@@ -527,7 +527,7 @@ window.loadRankings = async function() {
 };
 
 // --- Page: Stats ---
-let statsRegion = 'cn', statsTimespan = '30';
+let statsRegion = 'cn', statsTimespan = '30', statsPage = 1, _statsData = [];
 async function renderStats(app) {
   app.innerHTML = `
     <h1 class="page-title">Player Stats</h1>
@@ -566,34 +566,47 @@ window._goToPlayer = async function(name, el) {
   else { alert('Player not found'); if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; } }
 };
 
+const STATS_PER_PAGE = 50;
 window.loadStats = async function() {
   const el = $('#statsContent');
   if (!el) return;
   setLoading(el);
   try {
     const data = await apiFetch('/stats?region=' + statsRegion + '&timespan=' + statsTimespan);
-    const items = data.segments || [];
-    if (!items.length) return setEmpty(el, 'No stats available');
-    el.innerHTML = `<div class="table-wrap"><table>
-      <thead><tr><th>#</th><th>Player</th><th>Org</th><th>Agents</th><th>Rating</th><th>ACS</th><th>K/D</th><th>ADR</th><th>KPR</th><th>HS%</th></tr></thead>
-      <tbody>${items.map((p, i) => `
-        <tr>
-          <td class="rank-cell">${i + 1}</td>
-          <td><a class="player-link" onclick="_goToPlayer('${esc(p.player)}', this)" style="font-weight:600;cursor:pointer">${esc(p.player)}</a></td>
-          <td>${esc(p.org || 'N/A')}</td>
-          <td><div class="agents">${(p.agents||[]).map(a => agentBadge(a)).join('')}</div></td>
-          <td class="stat-highlight">${esc(p.rating)}</td>
-          <td>${esc(p.average_combat_score)}</td>
-          <td>${esc(p.kill_deaths)}</td>
-          <td>${esc(p.average_damage_per_round)}</td>
-          <td>${esc(p.kills_per_round)}</td>
-          <td>${esc(p.headshot_percentage)}</td>
-        </tr>
-      `).join('')}</tbody>
-    </table></div>`;
+    _statsData = data.segments || [];
+    if (!_statsData.length) return setEmpty(el, 'No stats available');
+    statsPage = 1;
+    _renderStatsPage(el);
   } catch (e) {
     setError(el, 'Failed to load stats', loadStats);
   }
+};
+function _renderStatsPage(el) {
+  const totalPages = Math.ceil(_statsData.length / STATS_PER_PAGE);
+  const start = (statsPage - 1) * STATS_PER_PAGE;
+  const items = _statsData.slice(start, start + STATS_PER_PAGE);
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Player</th><th>Org</th><th>Agents</th><th>Rating</th><th>ACS</th><th>K/D</th><th>ADR</th><th>KPR</th><th>HS%</th></tr></thead>
+    <tbody>${items.map((p, i) => `
+      <tr>
+        <td class="rank-cell">${start + i + 1}</td>
+        <td><a class="player-link" onclick="_goToPlayer('${esc(p.player)}', this)" style="font-weight:600;cursor:pointer">${esc(p.player)}</a></td>
+        <td>${esc(p.org || 'N/A')}</td>
+        <td><div class="agents">${(p.agents||[]).map(a => agentBadge(a)).join('')}</div></td>
+        <td class="stat-highlight">${esc(p.rating)}</td>
+        <td>${esc(p.average_combat_score)}</td>
+        <td>${esc(p.kill_deaths)}</td>
+        <td>${esc(p.average_damage_per_round)}</td>
+        <td>${esc(p.kills_per_round)}</td>
+        <td>${esc(p.headshot_percentage)}</td>
+      </tr>
+    `).join('')}</tbody>
+  </table></div>`;
+  if (totalPages > 1) el.innerHTML += renderPagination(statsPage, totalPages, 'statsPage', '_statsGoPage');
+}
+window._statsGoPage = function() {
+  const el = $('#statsContent');
+  if (el) _renderStatsPage(el);
 };
 
 // --- Page: Events ---
