@@ -526,7 +526,7 @@ window.loadRankings = async function() {
 };
 
 // --- Page: Stats ---
-let statsRegion = 'cn', statsTimespan = '30', statsPage = 1, _statsData = [], _statsNameIdMap = {};
+let statsRegion = 'cn', statsTimespan = '30', statsPage = 1, _statsData = [];
 async function renderStats(app) {
   app.innerHTML = `
     <h1 class="page-title">Player Stats</h1>
@@ -552,11 +552,7 @@ window.loadStats = async function() {
   if (!el) return;
   setLoading(el);
   try {
-    const vlrRegion = statsRegion === 'gc' ? 'gc' : statsRegion;
-    const [data] = await Promise.all([
-      apiFetch('/stats?region=' + statsRegion + '&timespan=' + statsTimespan),
-      _loadStatsPlayerMap(vlrRegion)
-    ]);
+    const data = await apiFetch('/stats?region=' + statsRegion + '&timespan=' + statsTimespan);
     _statsData = data.segments || [];
     if (!_statsData.length) return setEmpty(el, 'No stats available');
     statsPage = 1;
@@ -565,33 +561,43 @@ window.loadStats = async function() {
     setError(el, 'Failed to load stats', loadStats);
   }
 };
-async function _loadStatsPlayerMap(region) {
-  const cacheKey = 'vlr-player-map:' + region;
-  const cached = CacheManager.get(cacheKey);
-  if (cached) { _statsNameIdMap = cached.data; return; }
-  _statsNameIdMap = {};
-  for (let page = 1; page <= 10; page++) {
-    try {
-      const res = await fetch(VLR_API + '/api/v1/players?page=' + page + '&limit=50&region=' + region);
-      const json = await res.json();
-      const items = json.data || [];
-      if (!items.length) break;
-      items.forEach(p => { _statsNameIdMap[p.name.toLowerCase()] = p.id; });
-      if (items.length < 50) break;
-    } catch { break; }
-  }
-  CacheManager.set(cacheKey, _statsNameIdMap);
+
+const _statsAvatarCache = {};
+const _statsPlayerIdCache = {};
+async function _fetchStatsPlayer(name) {
+  const key = name.toLowerCase();
+  if (_statsPlayerIdCache[key]) return _statsPlayerIdCache[key];
+  try {
+    const data = await apiFetch('/search?q=' + encodeURIComponent(name));
+    const players = data.segments?.results?.players || [];
+    const match = players.find(p => p.name.toLowerCase() === key) || players[0] || null;
+    if (match) {
+      _statsPlayerIdCache[key] = match;
+      _statsAvatarCache[key] = match.img || '';
+    }
+    return match;
+  } catch { return null; }
 }
+
 function _renderStatsPage(el) {
   const totalPages = Math.ceil(_statsData.length / STATS_PER_PAGE);
   const start = (statsPage - 1) * STATS_PER_PAGE;
   const items = _statsData.slice(start, start + STATS_PER_PAGE);
   el.innerHTML = `<div class="table-wrap"><table>
     <thead><tr><th>#</th><th>Player</th><th>Org</th><th>Agents</th><th>Rating</th><th>ACS</th><th>K/D</th><th>ADR</th><th>KPR</th><th>HS%</th></tr></thead>
-    <tbody>${items.map((p, i) => `
-      <tr>
+    <tbody>${items.map((p, i) => {
+      const key = p.player.toLowerCase();
+      const cached = _statsPlayerIdCache[key];
+      const href = cached ? `#/player/${cached.id}` : '';
+      const avSrc = _statsAvatarCache[key];
+      return `<tr>
         <td class="rank-cell">${start + i + 1}</td>
-        <td>${_statsNameIdMap[p.player.toLowerCase()] ? `<a href="#/player/${_statsNameIdMap[p.player.toLowerCase()]}" style="font-weight:600">${esc(p.player)}</a>` : `<span style="font-weight:600">${esc(p.player)}</span>`}</td>
+        <td style="font-weight:600">
+          <span class="stats-player-cell" data-name="${esc(p.player)}">
+            ${avSrc ? `<img src="${fixImg(avSrc)}" class="stats-av" onerror="this.style.display='none'">` : `<span class="stats-av-placeholder" data-idx="${start + i}"></span>`}
+            ${href ? `<a href="${href}">${esc(p.player)}</a>` : `<span class="stats-player-name">${esc(p.player)}</span>`}
+          </span>
+        </td>
         <td>${esc(p.org || 'N/A')}</td>
         <td><div class="agents">${(p.agents||[]).map(a => agentBadge(a)).join('')}</div></td>
         <td class="stat-highlight">${esc(p.rating)}</td>
@@ -600,11 +606,37 @@ function _renderStatsPage(el) {
         <td>${esc(p.average_damage_per_round)}</td>
         <td>${esc(p.kills_per_round)}</td>
         <td>${esc(p.headshot_percentage)}</td>
-      </tr>
-    `).join('')}</tbody>
+      </tr>`;
+    }).join('')}</tbody>
   </table></div>`;
   if (totalPages > 1) el.innerHTML += renderPagination(statsPage, totalPages, 'statsPage', '_statsGoPage');
+  _observeStatsAvatars();
 }
+
+let _statsObserver = null;
+function _observeStatsAvatars() {
+  if (_statsObserver) _statsObserver.disconnect();
+  const placeholders = document.querySelectorAll('.stats-av-placeholder');
+  if (!placeholders.length) return;
+  _statsObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const ph = entry.target;
+      _statsObserver.unobserve(ph);
+      const cell = ph.closest('.stats-player-cell');
+      if (!cell) return;
+      const name = cell.dataset.name;
+      _fetchStatsPlayer(name).then(match => {
+        if (!match) return;
+        ph.outerHTML = `<img src="${fixImg(match.img)}" class="stats-av" onerror="this.style.display='none'">`;
+        const nameSpan = cell.querySelector('.stats-player-name');
+        if (nameSpan) nameSpan.outerHTML = `<a href="#/player/${match.id}">${esc(name)}</a>`;
+      });
+    });
+  }, { rootMargin: '200px' });
+  placeholders.forEach(ph => _statsObserver.observe(ph));
+}
+
 window._statsGoPage = function() {
   const el = $('#statsContent');
   if (el) _renderStatsPage(el);

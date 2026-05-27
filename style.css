@@ -106,6 +106,9 @@ tr:hover td{background:var(--surface-soft)}
 .team-cell{display:flex;align-items:center;gap:var(--s-sm)}
 .team-cell img{width:32px;height:32px;border-radius:var(--r-sm);object-fit:contain;background:var(--surface-soft)}
 .stat-highlight{font-weight:600;color:var(--ink)}
+.stats-player-cell{display:inline-flex;align-items:center;gap:var(--s-sm)}
+.stats-av{width:28px;height:28px;border-radius:var(--r-full);object-fit:cover;background:var(--surface-soft);flex-shrink:0}
+.stats-av-placeholder{width:28px;height:28px;border-radius:var(--r-full);background:var(--surface-soft);flex-shrink:0;display:inline-block}
 
 /* ========= Event Card ========= */
 .event-card{overflow:hidden;padding:0}
