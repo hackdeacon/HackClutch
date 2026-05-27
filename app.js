@@ -711,7 +711,7 @@ function _renderStatsPage(el) {
         <td class="rank-cell">${start + i + 1}</td>
         <td style="font-weight:600">
           <span class="stats-player-cell" data-name="${esc(p.player)}">
-            ${avSrc ? `<img src="${fixImg(avSrc)}" class="stats-av" onerror="this.className='stats-av-placeholder';this.removeAttribute('src');this.removeAttribute('onerror')">` : `<span class="stats-av-placeholder"></span>`}
+            <span class="stats-av-placeholder" ${avSrc ? `data-src="${fixImg(avSrc)}"` : ''}></span>
             ${href ? `<a href="${href}">${esc(p.player)}</a>` : `<span class="stats-player-name">${esc(p.player)}</span>`}
           </span>
         </td>
@@ -731,6 +731,20 @@ function _renderStatsPage(el) {
   _observeStatsAvatars();
 }
 
+function _replaceAvatar(ph, imgUrl, playerId, playerName) {
+  if (!imgUrl) return;
+  const img = new Image();
+  img.className = 'stats-av';
+  img.onload = () => { ph.replaceWith(img); };
+  img.src = fixImg(imgUrl);
+  if (playerId) {
+    const cell = ph.closest('.stats-player-cell');
+    if (cell) {
+      const nameSpan = cell.querySelector('.stats-player-name');
+      if (nameSpan) nameSpan.outerHTML = `<a href="#/player/${playerId}">${esc(playerName)}</a>`;
+    }
+  }
+}
 let _statsObserver = null;
 function _observeStatsAvatars() {
   if (_statsObserver) _statsObserver.disconnect();
@@ -741,14 +755,17 @@ function _observeStatsAvatars() {
       if (!entry.isIntersecting) return;
       const ph = entry.target;
       _statsObserver.unobserve(ph);
+      const cachedSrc = ph.dataset.src;
+      if (cachedSrc) {
+        _replaceAvatar(ph, cachedSrc);
+        return;
+      }
       const cell = ph.closest('.stats-player-cell');
       if (!cell) return;
       const name = cell.dataset.name;
       _fetchStatsPlayer(name).then(match => {
         if (!match) return;
-        ph.outerHTML = match.img ? `<img src="${fixImg(match.img)}" class="stats-av" onerror="this.className='stats-av-placeholder';this.removeAttribute('src');this.removeAttribute('onerror')">` : `<span class="stats-av-placeholder"></span>`;
-        const nameSpan = cell.querySelector('.stats-player-name');
-        if (nameSpan) nameSpan.outerHTML = `<a href="#/player/${match.id}">${esc(name)}</a>`;
+        _replaceAvatar(ph, match.img, match.id, name);
       });
     });
   }, { rootMargin: '200px' });
